@@ -4,14 +4,14 @@ import {Test, console, console2} from "forge-std/Test.sol";
 import {BlackJack} from "../../src/Blackjack.sol";
 import {DeployScript} from "../../script/DeployScript.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
-import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2Mock.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 pragma solidity 0.8.28;
 
 contract BlackJackFuzz is Test {
     ERC20Mock public BJT;
     BlackJack public BJ;
-    VRFCoordinatorV2Mock public vrf;
+    VRFCoordinatorV2_5Mock public vrf;
 
     event GameWon(address winner, uint256 amount);
     event GameLost(address winner, uint256 amount);
@@ -33,8 +33,8 @@ contract BlackJackFuzz is Test {
         // Deploying contracts
 
         // setting up chainlink....
-        vrf = new VRFCoordinatorV2Mock(100000000000000000, 1000000000);
-        uint64 subId = vrf.createSubscription();
+        vrf = new VRFCoordinatorV2_5Mock(100000000000000000, 1000000000, 4701000330007423);
+        uint256 subId = vrf.createSubscription();
         vrf.fundSubscription(subId, 100000000000000000000);
 
         // Deploy the contracts

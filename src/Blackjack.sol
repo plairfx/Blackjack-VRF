@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 contract BlackJack is VRFConsumerBaseV2Plus {
     IERC20 public BJT;
@@ -21,12 +21,11 @@ contract BlackJack is VRFConsumerBaseV2Plus {
 
     // Chainlink presets..
     bytes32 public keyHash;
-    uint64 private subId;
-    uint32 public callbackGasLimit = 100000000;
+    uint256 private subId;
+    uint32 public callbackGasLimit = 2400000;
     uint16 public requestConfirmations = 3;
     uint32 public numWords = 21;
-    uint64 s_subscriptionId;
-    VRFCoordinatorV2Interface private immutable CoordinatorInterface;
+    uint256 s_subscriptionId;
 
     // Player, House & Owner
     address house;
@@ -66,14 +65,15 @@ contract BlackJack is VRFConsumerBaseV2Plus {
         _;
     }
 
-    constructor(IERC20 token, uint64 subscriptionId, address _vrfCoordinator, bytes32 KEY_HASH)
+    constructor(IERC20 token, uint256 subscriptionId, address _vrfCoordinator, bytes32 KEY_HASH)
         VRFConsumerBaseV2Plus(_vrfCoordinator)
     {
         BJT = IERC20(token);
         s_subscriptionId = subscriptionId;
         keyHash = KEY_HASH;
         owners = msg.sender;
-        CoordinatorInterface = VRFCoordinatorV2Interface(_vrfCoordinator);
+        VRFConsumerBaseV2Plus(_vrfCoordinator);
+
         BJT.approve(address(this), type(uint256).max);
     }
 
@@ -86,7 +86,7 @@ contract BlackJack is VRFConsumerBaseV2Plus {
      * Dealer will receive 1 cards,( SecondCard will be finalised after the player does a second action)
      * Player will receive 2 cards.
      */
-    function play(uint256 amount) public {
+    function play(uint256 amount) public returns (uint256) {
         require(BJT.balanceOf(msg.sender) >= amount, "You do not have enough Balance");
         require(!gameStarted, GameHasAlreadyStarted());
 
@@ -100,48 +100,89 @@ contract BlackJack is VRFConsumerBaseV2Plus {
         player = msg.sender;
         bettingAmount = amount;
 
-        _requestRandomWords();
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
+        );
         cardsRemaining -= 3;
+
+        return requestId;
     }
 
     /**
      * @dev this is the function lets the user draw a card,
      * only the player who used the _play function can call this function.
      */
-    function drawCard() public {
+    function drawCard() public returns (uint256) {
         require(player == msg.sender, NotThePlayer());
 
-        _requestRandomWords();
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
+        );
 
         cardsRemaining -= 1;
+
+        return requestId;
     }
 
     /**
      * @dev  when a user stand it will stop the game and let the
      * dealer draw and compare the results between the player and the dealer
      */
-    function stand() public {
+    function stand() public returns (uint256) {
         require(player == msg.sender, NotThePlayer());
 
         gameStand = true;
 
-        _requestRandomWords();
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
+        );
+
+        return requestId;
     }
 
-    function fulfillRandomWords(uint256 _requestId, uint256[] calldata _randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         if (gameStand == true) {
-            _finishGame(_randomWords);
+            _finishGame(randomWords);
         } else if (playerCards == 0 && houseCards == 0) {
-            _play(_randomWords);
+            _play(randomWords);
         } else if (playerCards > 0 && houseCards > 0) {
-            _drawCard(_randomWords);
+            _drawCard(randomWords);
         }
     }
 
-    function _requestRandomWords() internal returns (uint256 requestId) {
-        // Will revert if subscription is not set and funded.
-        requestId = CoordinatorInterface.requestRandomWords(
-            keyHash, s_subscriptionId, requestConfirmations, callbackGasLimit, numWords
+    // maybe because the fulfillRandomWords = internal the other contract cannot call it?
+
+    function requestRandomWords() external returns (uint256 requestId) {
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
         );
         return requestId;
     }
@@ -471,7 +512,7 @@ contract BlackJack is VRFConsumerBaseV2Plus {
         return gameStand;
     }
 
-    function getSubId() public view returns (uint64) {
+    function getSubId() public view returns (uint256) {
         return s_subscriptionId;
     }
 
@@ -487,10 +528,10 @@ contract BlackJack is VRFConsumerBaseV2Plus {
         return bettingAmount;
     }
 
-/**
- * these functions are used for the testing enviorment inside the unit test.
- * these functions below will never get deployed.
- */
+    /**
+     * these functions are used for the testing enviorment inside the unit test.
+     * these functions below will never get deployed.
+     */
     function addCardPlayer(uint8 number) external {
         playerCards += number;
     }
