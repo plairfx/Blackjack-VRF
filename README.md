@@ -1,21 +1,34 @@
-## Foundry
+## Blackjack VRF
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Blackjack VRF, offers a randomized blackjack experience (Player vs the House) same in the modern day gambling experiences that most
+casino/crypto casino's tend to offer, while this one is not based on a monetary value but a custom token named (BlackjackToken) BJT.
+[Blackjack contract](https://sepolia.etherscan.io/address/0x1cb6f4bdddb817641546e953c8a3c268040643f7) on sepolia.
 
-Foundry consists of:
+The play can use functions such as play, draw and stand, to choose his options to continue the game or stand with the draw he got from his 2 first cards,
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+as there is no ZKP involved with this project, we use the method that the dealer will only have 1 card drawn while the player will draw 2 cards when the function
+'play' is called, after the users busts or stands, the second card of the dealer will get drawn, which will result in a win or a loss to the player.
+
+
+
+
+Front-end: 
+
+Coming soon...
 
 ## Documentation
 
-https://book.getfoundry.sh/
+- coming soon
+
+
 
 ## Usage
 
 ### Build
+
+```shell
+$ forge install
+```
 
 ```shell
 $ forge build
@@ -27,41 +40,9 @@ $ forge build
 $ forge test
 ```
 
-### Format
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
 # Blackjack-VRF
+This contract-code has not gone through any audits and is not usable in a real enviorment, 
+
+
+# Known Issues...
